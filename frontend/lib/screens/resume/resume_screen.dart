@@ -19,7 +19,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
   String? _resumeUrl;
 
   // Backend base URL — change to your deployed URL when live
-  static const _backendUrl = 'http://10.0.2.2:8000';
+  static const _backendUrl = 'http://localhost:8000';
 
   @override
   void initState() {
@@ -90,7 +90,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
     if (_resumeUrl == null) return;
     final uri = Uri.parse(_resumeUrl!);
     if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      await launchUrl(uri, mode: LaunchMode.platformDefault);
     }
   }
 
