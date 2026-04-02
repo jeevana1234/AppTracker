@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+supabase
+python-dotenv
+langchain
+langchain-google-genai
+google-generativeai
+playwright
+httpx
+python-multipart
+pydantic
+reportlab
+beautifulsoup4
