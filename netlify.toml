@@ -1,0 +1,9 @@
+[build]
+  base    = "frontend"
+  command = "git clone https://github.com/flutter/flutter.git --depth 1 --branch stable $HOME/flutter && $HOME/flutter/bin/flutter build web --release"
+  publish = "build/web"
+
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200
