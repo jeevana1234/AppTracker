@@ -1,4 +1,4 @@
-import google.generativeai as genai
+from google import genai
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
@@ -6,13 +6,10 @@ from reportlab.lib.units import inch
 from reportlab.lib import colors
 import io
 from app.config import GEMINI_API_KEY, SUPABASE_URL, SUPABASE_KEY
-from supabase import create_client
-
-genai.configure(api_key=GEMINI_API_KEY)
 
 async def generate_resume_pdf(profile: dict, job_description: str = "") -> str:
     # Step 1: Use Gemini to write a tailored summary and bullet points
-    model = genai.GenerativeModel("gemini-2.0-flash")
+    client = genai.Client(api_key=GEMINI_API_KEY)
 
     prompt = f"""
     You are a professional resume writer.
@@ -28,7 +25,10 @@ async def generate_resume_pdf(profile: dict, job_description: str = "") -> str:
     Return JSON with keys: "summary", "experience_bullets" (list of strings), "skills_section" (string).
     """
 
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=prompt
+    )
     import json, re
     raw = response.text
     # Extract JSON from response

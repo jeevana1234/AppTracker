@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from typing import Optional
 from app.database import get_supabase
 
 router = APIRouter()
@@ -12,6 +13,13 @@ class JobApplication(BaseModel):
     notes: str = ""
     user_id: str
 
+class JobApplicationUpdate(BaseModel):
+    company: Optional[str] = None
+    role: Optional[str] = None
+    status: Optional[str] = None
+    job_url: Optional[str] = None
+    notes: Optional[str] = None
+
 @router.get("/")
 def get_jobs(user_id: str):
     db = get_supabase()
@@ -21,13 +29,16 @@ def get_jobs(user_id: str):
 @router.post("/")
 def add_job(job: JobApplication):
     db = get_supabase()
-    response = db.table("job_applications").insert(job.dict()).execute()
+    response = db.table("job_applications").insert(job.model_dump()).execute()
     return response.data
 
 @router.patch("/{job_id}")
-def update_job(job_id: str, updates: dict):
+def update_job(job_id: str, updates: JobApplicationUpdate):
     db = get_supabase()
-    response = db.table("job_applications").update(updates).eq("id", job_id).execute()
+    data = {k: v for k, v in updates.model_dump().items() if v is not None}
+    if not data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    response = db.table("job_applications").update(data).eq("id", job_id).execute()
     return response.data
 
 @router.delete("/{job_id}")
