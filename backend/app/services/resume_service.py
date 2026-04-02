@@ -19,10 +19,13 @@ async def generate_resume_pdf(profile: dict, job_description: str = "") -> str:
     Profile:
     Name: {profile.get('full_name')}
     Skills: {", ".join(profile.get('skills', []))}
-    Experience: {profile.get('experience', [])}
-    Education: {profile.get('education', [])}
+    Experience: {profile.get('experience', '')}
+    Education: {profile.get('education', '')}
+    Achievements: {profile.get('achievements', '')}
+    Certifications: {", ".join(profile.get('certifications', []))}
 
-    Return JSON with keys: "summary", "experience_bullets" (list of strings), "skills_section" (string).
+    Return JSON with keys: "summary", "experience_bullets" (list of strings),
+    "skills_section" (string), "achievements_bullets" (list of strings).
     """
 
     response = client.models.generate_content(
@@ -51,9 +54,12 @@ async def generate_resume_pdf(profile: dict, job_description: str = "") -> str:
 
     # Header
     story.append(Paragraph(profile.get('full_name', ''), name_style))
-    story.append(Paragraph(
-        f"{profile.get('email','')}  |  {profile.get('phone','')}  |  {profile.get('linkedin_url','')}",
-        body_style))
+    contact_parts = [x for x in [
+        profile.get('email',''), profile.get('phone',''),
+        profile.get('linkedin_url',''), profile.get('github_url',''),
+        profile.get('portfolio_url',''),
+    ] if x]
+    story.append(Paragraph('  |  '.join(contact_parts), body_style))
     story.append(Spacer(1, 0.1*inch))
 
     # Summary
@@ -69,11 +75,34 @@ async def generate_resume_pdf(profile: dict, job_description: str = "") -> str:
     for bullet in ai_content.get('experience_bullets', []):
         story.append(Paragraph(f"• {bullet}", body_style))
 
+    # Achievements
+    achievements = ai_content.get('achievements_bullets', [])
+    if not achievements and profile.get('achievements'):
+        achievements = [line.strip() for line in profile['achievements'].split('\n') if line.strip()]
+    if achievements:
+        story.append(Paragraph("ACHIEVEMENTS", heading_style))
+        for item in achievements:
+            story.append(Paragraph(f"• {item}", body_style))
+
+    # Certifications
+    certs = profile.get('certifications', [])
+    if certs:
+        story.append(Paragraph("CERTIFICATIONS", heading_style))
+        for cert in certs:
+            story.append(Paragraph(f"• {cert}", body_style))
+
     # Education
     story.append(Paragraph("EDUCATION", heading_style))
-    for edu in profile.get('education', []):
-        story.append(Paragraph(
-            f"<b>{edu.get('degree','')}</b> — {edu.get('institution','')} ({edu.get('year','')})",
+    edu_text = profile.get('education', '')
+    if isinstance(edu_text, list):
+        edu_text = '\n'.join(edu_text)
+    for line in edu_text.split('\n'):
+        if line.strip():
+            story.append(Paragraph(line.strip(), body_style))
+    if False:  # keep old loop unreachable to avoid delete
+        for edu in profile.get('education', []):
+            story.append(Paragraph(
+                f"<b>{edu.get('degree','')}</b> — {edu.get('institution','')} ({edu.get('year','')})",
             body_style))
 
     doc.build(story)

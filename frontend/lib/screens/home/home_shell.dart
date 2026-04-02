@@ -8,8 +8,9 @@ class HomeShell extends StatelessWidget {
   int _selectedIndex(BuildContext context) {
     final loc = GoRouterState.of(context).matchedLocation;
     if (loc.startsWith('/universities')) return 1;
-    if (loc.startsWith('/resume')) return 2;
-    if (loc.startsWith('/profile')) return 3;
+    if (loc.startsWith('/alerts')) return 2;
+    if (loc.startsWith('/resume')) return 3;
+    if (loc.startsWith('/profile')) return 4;
     return 0;
   }
 
@@ -21,14 +22,11 @@ class HomeShell extends StatelessWidget {
         selectedIndex: _selectedIndex(context),
         onDestinationSelected: (i) {
           switch (i) {
-            case 0:
-              context.go('/jobs');
-            case 1:
-              context.go('/universities');
-            case 2:
-              context.go('/resume');
-            case 3:
-              context.go('/profile');
+            case 0: context.go('/jobs');
+            case 1: context.go('/universities');
+            case 2: context.go('/alerts');
+            case 3: context.go('/resume');
+            case 4: context.go('/profile');
           }
         },
         destinations: const [
@@ -39,7 +37,11 @@ class HomeShell extends StatelessWidget {
           NavigationDestination(
               icon: Icon(Icons.school_outlined),
               selectedIcon: Icon(Icons.school),
-              label: 'Universities'),
+              label: 'Univs'),
+          NavigationDestination(
+              icon: Icon(Icons.notifications_outlined),
+              selectedIcon: Icon(Icons.notifications),
+              label: 'Alerts'),
           NavigationDestination(
               icon: Icon(Icons.description_outlined),
               selectedIcon: Icon(Icons.description),

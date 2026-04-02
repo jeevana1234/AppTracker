@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -8,6 +8,7 @@ import 'screens/jobs/jobs_screen.dart';
 import 'screens/universities/universities_screen.dart';
 import 'screens/resume/resume_screen.dart';
 import 'screens/profile/profile_screen.dart';
+import 'screens/alerts/job_alerts_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,9 +45,8 @@ final _router = GoRouter(
       builder: (_, __, child) => HomeShell(child: child),
       routes: [
         GoRoute(path: '/jobs', builder: (_, __) => const JobsScreen()),
-        GoRoute(
-            path: '/universities',
-            builder: (_, __) => const UniversitiesScreen()),
+        GoRoute(path: '/universities', builder: (_, __) => const UniversitiesScreen()),
+        GoRoute(path: '/alerts', builder: (_, __) => const JobAlertsScreen()),
         GoRoute(path: '/resume', builder: (_, __) => const ResumeScreen()),
         GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
       ],
