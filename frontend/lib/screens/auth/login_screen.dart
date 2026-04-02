@@ -21,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen>
   void initState() {
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
+    _emailCtrl.text = 'maddelajeevana2003@gmail.com';
   }
 
   @override
