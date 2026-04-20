@@ -11,3 +11,4 @@ python-multipart
 pydantic
 reportlab
 beautifulsoup4
+pdfplumber

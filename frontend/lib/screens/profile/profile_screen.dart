@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:convert';
+
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -23,6 +25,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _experienceCtrl = TextEditingController();
   final _achievementsCtrl = TextEditingController();
   final _certificationsCtrl = TextEditingController();
+  final _projectsCtrl       = TextEditingController();
+  final List<Map<String, TextEditingController>> _customSections = [];
 
   bool _loading = true;
   bool _saving = false;
@@ -39,8 +43,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     for (final c in [
       _nameCtrl, _phoneCtrl, _linkedinCtrl, _githubCtrl, _portfolioCtrl,
       _summaryCtrl, _skillsCtrl, _educationCtrl, _experienceCtrl,
-      _achievementsCtrl, _certificationsCtrl,
+      _achievementsCtrl, _certificationsCtrl, _projectsCtrl,
     ]) { c.dispose(); }
+    for (final sec in _customSections) {
+      sec['title']?.dispose();
+      sec['body']?.dispose();
+    }
     super.dispose();
   }
 
@@ -69,6 +77,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final certs = data['certifications'];
         if (certs is List) { _certificationsCtrl.text = certs.join('\n'); }
         else if (certs is String) { _certificationsCtrl.text = certs; }
+        _projectsCtrl.text = data['projects'] ?? '';
+        // Load custom extra sections from Supabase
+        final extras = data['extra_sections'];
+        if (extras != null) {
+          try {
+            final List<dynamic> parsed =
+                extras is String ? jsonDecode(extras) as List : extras as List;
+            for (final sec in parsed) {
+              _customSections.add({
+                'title': TextEditingController(text: sec['title']?.toString() ?? ''),
+                'body':  TextEditingController(text: sec['body']?.toString()  ?? ''),
+              });
+            }
+          } catch (_) {}
+        }
       } else {
         final meta = _db.auth.currentUser?.userMetadata;
         if (meta?['full_name'] != null) _nameCtrl.text = meta!['full_name'];
@@ -112,6 +135,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final res = await _db.from('user_profiles').insert(payload).select().single();
         _profileId = res['id'];
       }
+      // Projects & custom sections: saved separately in case columns don't exist yet
+      if (_profileId != null) {
+        try {
+          await _db.from('user_profiles').update({
+            'projects': _projectsCtrl.text.trim().isEmpty ? null : _projectsCtrl.text.trim(),
+          }).eq('id', _profileId!);
+        } catch (_) {}
+        try {
+          final extrasList = _customSections
+              .map((s) => {'title': s['title']!.text.trim(), 'body': s['body']!.text.trim()})
+              .where((s) => (s['title'] ?? '').isNotEmpty)
+              .toList();
+          await _db.from('user_profiles').update({
+            'extra_sections': jsonEncode(extrasList),
+          }).eq('id', _profileId!);
+        } catch (_) {}
+      }
       _snack('Profile saved!');
     } catch (e) {
       _snack('Failed to save: $e', error: true);
@@ -144,6 +184,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
       content: Text(msg),
       backgroundColor: error ? Colors.red[700] : Colors.green[700],
     ));
+  }
+
+  void _addCustomSection() {
+    setState(() {
+      _customSections.add({
+        'title': TextEditingController(),
+        'body':  TextEditingController(),
+      });
+    });
+  }
+
+  List<Widget> _buildCustomSections() {
+    if (_customSections.isEmpty) return [];
+    final items = <Widget>[_section('Additional Sections')];
+    for (int i = 0; i < _customSections.length; i++) {
+      final sec = _customSections[i];
+      items.add(Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Expanded(
+                child: TextFormField(
+                  controller: sec['title'],
+                  decoration: const InputDecoration(
+                    labelText: 'Section Title',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.title),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                tooltip: 'Remove section',
+                onPressed: () => setState(() {
+                  sec['title']!.dispose();
+                  sec['body']!.dispose();
+                  _customSections.removeAt(i);
+                }),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            TextField(
+              controller: sec['body'],
+              maxLines: 4,
+              decoration: const InputDecoration(
+                hintText: 'Enter content for this section...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+      ));
+    }
+    return items;
   }
 
   @override
@@ -222,6 +319,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Text('One role per paragraph', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
                     const SizedBox(height: 20),
 
+                    _section('Projects'),
+                    _multiline(_projectsCtrl,
+                        'e.g. AppTracker – Job tracking built with Flutter & FastAPI\n• Integrated Supabase for auth & storage\n• Added AI resume generation', 5),
+                    Text('One project per paragraph: Name, then bullet points',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                    const SizedBox(height: 20),
+
                     _section('Achievements'),
                     _multiline(_achievementsCtrl,
                         'e.g. Won XYZ Hackathon 2024\nPublished paper on ABC\nRanked top 5% on Leetcode', 4),
@@ -233,7 +337,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         'e.g. AWS Solutions Architect – Amazon, 2024\nGoogle Data Analytics – Coursera, 2023', 4),
                     Text('One certification per line: Name – Issuer, Year',
                         style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 20),
+
+                    ..._buildCustomSections(),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _addCustomSection,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Custom Section'),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
 
                     SizedBox(
                       width: double.infinity,

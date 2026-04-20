@@ -33,7 +33,7 @@ class _JobAlertsScreenState extends State<JobAlertsScreen> {
           .from('job_alerts')
           .select()
           .eq('user_id', uid)
-          .order('created_at', ascending: false)
+          .order('updated_at', ascending: false)
           .limit(50);
       final prefs = await _db
           .from('job_preferences')

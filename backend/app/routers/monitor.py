@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from supabase import create_client
 from app.config import SUPABASE_URL, SUPABASE_KEY
 from app.services.job_monitor_service import run_job_monitor_for_all_users, search_jobs_for_user, save_new_alerts
-from app.services.auto_apply_service import auto_apply_to_job
+from app.services.auto_apply_service import auto_apply_to_job, auto_apply_with_portal_login
 from typing import Optional
 
 router = APIRouter(prefix="/monitor", tags=["monitor"])
@@ -22,6 +22,11 @@ class JobPreferences(BaseModel):
 class AutoApplyRequest(BaseModel):
     user_id: str
     job_alert_id: str
+
+
+class DirectApplyRequest(BaseModel):
+    user_id: str
+    job_application_id: str
 
 
 class UniMonitorRequest(BaseModel):
@@ -110,6 +115,40 @@ async def auto_apply(req: AutoApplyRequest):
     job = job_res.data[0]
 
     result = await auto_apply_to_job(profile, job)
+    return result
+
+
+@router.post("/direct-apply")
+async def direct_apply(req: DirectApplyRequest):
+    """
+    Auto-apply to a manually-added job using stored portal credentials.
+    Playwright logs in, fills all form fields from the user's profile, and submits.
+    """
+    sb = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+    profile_res = sb.table("user_profiles").select("*").eq("user_id", req.user_id).execute()
+    if not profile_res.data:
+        raise HTTPException(status_code=404, detail="Profile not found. Please fill in your profile first.")
+
+    job_res = sb.table("job_applications").select("*").eq("id", req.job_application_id).execute()
+    if not job_res.data:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    profile = profile_res.data[0]
+    job = job_res.data[0]
+
+    if not job.get("job_url"):
+        raise HTTPException(status_code=400, detail="No job URL stored for this job. Edit the job and add a URL first.")
+
+    result = await auto_apply_with_portal_login(profile, job)
+
+    if result["success"]:
+        from datetime import datetime, timezone
+        sb.table("job_applications").update({
+            "status": "applied",
+            "auto_applied_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", req.job_application_id).execute()
+
     return result
 
 

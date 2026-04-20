@@ -27,7 +27,7 @@ class _UniversitiesScreenState extends State<UniversitiesScreen> {
           .from('uni_applications')
           .select()
           .eq('user_id', uid)
-          .order('created_at', ascending: false);
+          .order('updated_at', ascending: false);
       setState(() => _apps = List<Map<String, dynamic>>.from(data));
     } catch (_) {
       _snack('Failed to load applications', error: true);

@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from app.routers import jobs, universities, resume, auth, monitor
 import asyncio
@@ -36,7 +37,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -46,6 +47,15 @@ app.include_router(jobs.router, prefix="/jobs", tags=["Jobs"])
 app.include_router(universities.router, prefix="/universities", tags=["Universities"])
 app.include_router(resume.router, prefix="/resume", tags=["Resume"])
 app.include_router(monitor.router, tags=["Monitor"])
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    """Ensure all unhandled 500s return JSON with CORS headers (not plain text)."""
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {str(exc)}"},
+    )
+
 
 @app.get("/")
 def root():
